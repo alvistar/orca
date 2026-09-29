@@ -189,7 +189,7 @@ export function useGlobalKeybindings(args: {
       }
 
       // Before the editable-surface bail so the chord also works in the editor; unbound by default,
-      // and a position past the last saved view is a no-op.
+      // and a position past the last saved view falls through untouched.
       const savedViewIndex = matchKeybindingDigitIndex(
         'sidebar.view.selectByIndex',
         input,
@@ -197,7 +197,7 @@ export function useGlobalKeybindings(args: {
         keybindings,
         { context, terminalShortcutPolicy }
       )
-      if (savedViewIndex !== null) {
+      if (savedViewIndex !== null && useAppStore.getState().sidebarSavedViews[savedViewIndex]) {
         input.preventDefault()
         notifyTerminalCapture('sidebar.view.selectByIndex')
         useAppStore.getState().applySidebarViewAtIndex(savedViewIndex)

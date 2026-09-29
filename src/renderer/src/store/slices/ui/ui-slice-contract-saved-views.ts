@@ -39,7 +39,8 @@ export type UISliceSavedViews = {
   renameSidebarView: (id: string, name: string) => SidebarViewNameResult
   setSidebarViewColor: (id: string, color: string | null) => void
   deleteSidebarView: (id: string) => SidebarViewDeletion | null
-  restoreSidebarView: (deletion: SidebarViewDeletion) => void
+  /** False when the view cannot come back: its name is taken, the list is full, or it already exists. */
+  restoreSidebarView: (deletion: SidebarViewDeletion) => boolean
   /** Drops the active marker and restores the settings from before the first view was applied. */
   clearActiveSidebarView: () => void
   savedViewDialog: SavedViewDialogState | null

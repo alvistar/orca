@@ -393,14 +393,28 @@ describe('saved sidebar views: deactivation', () => {
     expect(store.getState().activeSidebarViewId).toBe(id)
   })
 
-  it('keeps the view active on catalog pruning and remote hydration', () => {
+  it('keeps the view active on catalog pruning and a matching sync broadcast', () => {
     const store = seededStore()
     store.getState().setFilterRepoIds(['repo-a', 'repo-b'])
     const id = saveOrThrow(store, 'Both')
 
-    // Catalog refresh prunes a removed repo through a raw write.
-    store.setState({ filterRepoIds: ['repo-a'] })
-    // A paired device changes a captured field; the broadcast rehydrates.
+    // Catalog refresh removes repo-b and prunes it through a raw write.
+    store.setState({ repos: [repo('repo-a')], filterRepoIds: ['repo-a'] })
+    store.getState().hydratePersistedUI(
+      makePersistedUI({
+        filterRepoIds: ['repo-a'],
+        sidebarSavedViews: store.getState().sidebarSavedViews,
+        activeSidebarViewId: id
+      })
+    )
+
+    expect(store.getState().activeSidebarViewId).toBe(id)
+  })
+
+  it('deactivates when a paired client syncs settings that no longer match the view', () => {
+    const store = seededStore()
+    const id = saveOrThrow(store, 'Default')
+
     store.getState().hydratePersistedUI(
       makePersistedUI({
         groupBy: 'none',
@@ -409,7 +423,26 @@ describe('saved sidebar views: deactivation', () => {
       })
     )
 
-    expect(store.getState().activeSidebarViewId).toBe(id)
+    expect(store.getState().groupBy).toBe('none')
+    expect(store.getState().activeSidebarViewId).toBeNull()
+    expect(store.getState().sidebarSettingsBeforeView).toBeNull()
+  })
+
+  it('keeps the view on startup hydration before the repo catalog loads', () => {
+    const store = seededStore()
+    store.getState().setFilterRepoIds(['repo-a'])
+    const id = saveOrThrow(store, 'Only A')
+    const restarted = createUIStore()
+
+    restarted.getState().hydratePersistedUI(
+      makePersistedUI({
+        filterRepoIds: ['repo-a'],
+        sidebarSavedViews: store.getState().sidebarSavedViews,
+        activeSidebarViewId: id
+      })
+    )
+
+    expect(restarted.getState().activeSidebarViewId).toBe(id)
   })
 
   it('deactivates when opening a workspace reveals its project in the filter', () => {

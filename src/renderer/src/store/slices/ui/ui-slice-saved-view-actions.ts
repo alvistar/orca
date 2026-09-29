@@ -36,10 +36,11 @@ function liveSettingsKey(state: AppState): string {
   return JSON.stringify(snapshotSidebarViewSettings(state))
 }
 
+// Why this key order: it matches the hydration normalizer, so the writer's JSON equality sees an echo as unchanged.
 function withColor(view: SidebarSavedView, color: string | null | undefined): SidebarSavedView {
-  const { color: _previous, ...rest } = view
+  const { id, name, settings } = view
   const normalized = normalizeRepoBadgeColor(color)
-  return normalized ? { ...rest, color: normalized } : rest
+  return normalized ? { id, name, color: normalized, settings } : { id, name, settings }
 }
 
 /**
@@ -208,7 +209,7 @@ export function createUiSavedViewActions(set: UISliceSet, get: UISliceGet): Part
         findSidebarViewNameConflict(s.sidebarSavedViews, view.name) ||
         s.sidebarSavedViews.length >= MAX_SIDEBAR_SAVED_VIEWS
       ) {
-        return
+        return false
       }
       const sidebarSavedViews = [...s.sidebarSavedViews]
       sidebarSavedViews.splice(Math.min(index, sidebarSavedViews.length), 0, view)
@@ -224,6 +225,7 @@ export function createUiSavedViewActions(set: UISliceSet, get: UISliceGet): Part
             }
           : { sidebarSavedViews }
       )
+      return true
     },
 
     clearActiveSidebarView: () => {

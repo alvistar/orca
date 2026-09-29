@@ -5,6 +5,7 @@ import type { WorkspaceSessionState } from '../../shared/workspace-session-state
 import { parseAppSshPtyId, toAppSshPtyId } from '../../shared/ssh-pty-id'
 import { toSshExecutionHostId } from '../../shared/execution-host'
 import { normalizeManualRepoOrder } from '../../shared/manual-repo-order'
+import { migrateSidebarSavedViewsHostId } from '../../shared/sidebar-saved-views-host-sync'
 
 /**
  * Carrier sweep for SSH target re-adoption (see ssh-target-readoption.ts).
@@ -152,5 +153,6 @@ export function migrateUiHostScopeSshTargetId(
     )
     changed = true
   }
+  changed = migrateSidebarSavedViewsHostId(ui, oldHostId, newHostId) || changed
   return changed
 }

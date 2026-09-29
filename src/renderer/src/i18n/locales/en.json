@@ -51,7 +51,8 @@
       "chipLabel": "Saved view: {{name}}. Switch view",
       "clear": "Clear saved view",
       "appliedAnnouncement": "Saved view {{name}} applied",
-      "clearedAnnouncement": "Saved view cleared"
+      "clearedAnnouncement": "Saved view cleared",
+      "undoFailed": "Couldn't restore view \"{{name}}\""
     }
   },
   "app": {

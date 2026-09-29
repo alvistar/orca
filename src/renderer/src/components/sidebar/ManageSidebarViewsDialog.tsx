@@ -143,7 +143,15 @@ function ViewRow({
       duration: UNDO_DURATION_MS,
       action: {
         label: translate('sidebar.savedViews.undo', 'Undo'),
-        onClick: () => restoreSidebarView(deletion)
+        onClick: () => {
+          if (!restoreSidebarView(deletion)) {
+            toast.error(
+              translate('sidebar.savedViews.undoFailed', 'Couldn\'t restore view "{{name}}"', {
+                name: view.name
+              })
+            )
+          }
+        }
       }
     })
   }

@@ -12,6 +12,10 @@ import {
   validateSidebarViewName,
   type SidebarViewLiveSettings
 } from './sidebar-saved-views'
+import {
+  migrateSidebarSavedViewsHostId,
+  reconcileSyncedSidebarView
+} from './sidebar-saved-views-host-sync'
 
 const live: SidebarViewLiveSettings = {
   filterRepoIds: ['repo-a', 'repo-b'],
@@ -100,6 +104,18 @@ describe('resolveSidebarViewSettings', () => {
       workspaceHostScope: 'all',
       visibleWorkspaceHostIds: null
     })
+  })
+
+  it('focuses a legacy single-scope view that saved no visibility list', () => {
+    const legacy = view({
+      settings: { ...view().settings, workspaceHostScope: 'ssh:box', visibleWorkspaceHostIds: null }
+    })
+    delete legacy.settings.visibleWorkspaceHostIds
+
+    const resolved = resolveSidebarViewSettings(legacy, new Set())
+
+    expect(resolved.visibleWorkspaceHostIds).toEqual(['ssh:box'])
+    expect(resolved.workspaceHostScope).toBe('ssh:box')
   })
 
   it('derives the host scope from a multi-host visibility list', () => {
@@ -248,5 +264,71 @@ describe('view names', () => {
     expect(findSidebarViewNameConflict(views, 'homelab')?.id).toBe('v1')
     expect(findSidebarViewNameConflict(views, 'homelab', 'v1')).toBeUndefined()
     expect(findSidebarViewNameConflict(views, 'Other')).toBeUndefined()
+  })
+})
+
+describe('migrateSidebarSavedViewsHostId', () => {
+  it('re-points the host id in every saved view and in the pre-view snapshot', () => {
+    const ui = {
+      sidebarSavedViews: [
+        view(),
+        view({
+          id: 'v2',
+          name: 'Both',
+          settings: {
+            ...view().settings,
+            workspaceHostScope: 'local',
+            visibleWorkspaceHostIds: ['local', 'ssh:box', 'ssh:new']
+          }
+        })
+      ],
+      sidebarSettingsBeforeView: { ...view().settings }
+    }
+
+    expect(migrateSidebarSavedViewsHostId(ui, 'ssh:box', 'ssh:new')).toBe(true)
+
+    expect(ui.sidebarSavedViews[0].settings.workspaceHostScope).toBe('ssh:new')
+    expect(ui.sidebarSavedViews[0].settings.visibleWorkspaceHostIds).toEqual(['ssh:new'])
+    expect(ui.sidebarSavedViews[1].settings.visibleWorkspaceHostIds).toEqual(['local', 'ssh:new'])
+    expect(ui.sidebarSettingsBeforeView.workspaceHostScope).toBe('ssh:new')
+  })
+
+  it('reports no change for other hosts and tolerates missing or junk entries', () => {
+    const ui = { sidebarSavedViews: [view()], sidebarSettingsBeforeView: null }
+    Object.assign(ui.sidebarSavedViews, { 1: null })
+
+    expect(migrateSidebarSavedViewsHostId(ui, 'ssh:other', 'ssh:new')).toBe(false)
+    expect(migrateSidebarSavedViewsHostId({}, 'ssh:box', 'ssh:new')).toBe(false)
+  })
+})
+
+describe('reconcileSyncedSidebarView', () => {
+  const known = new Set(['repo-a', 'repo-b'])
+
+  it('keeps a view whose settings still match, and ignores an inactive store', () => {
+    const state = { ...live, sidebarSavedViews: [view()], activeSidebarViewId: 'v1' }
+
+    expect(reconcileSyncedSidebarView(state, known)).toBeNull()
+    expect(reconcileSyncedSidebarView({ ...state, activeSidebarViewId: null }, known)).toBeNull()
+  })
+
+  it('drops the marker and snapshot once synced settings diverge', () => {
+    const state = {
+      ...live,
+      groupBy: 'none' as const,
+      sidebarSavedViews: [view()],
+      activeSidebarViewId: 'v1'
+    }
+
+    expect(reconcileSyncedSidebarView(state, known)).toEqual({
+      activeSidebarViewId: null,
+      sidebarSettingsBeforeView: null
+    })
+  })
+
+  it('waits for the repo catalog before comparing project filters', () => {
+    const state = { ...live, sidebarSavedViews: [view()], activeSidebarViewId: 'v1' }
+
+    expect(reconcileSyncedSidebarView(state, new Set())).toBeNull()
   })
 })
