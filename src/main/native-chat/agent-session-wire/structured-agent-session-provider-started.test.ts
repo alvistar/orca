@@ -37,7 +37,17 @@ beforeEach(async () => {
   resetHostTestOperationIds()
   lifecycle = []
   statuses = []
-  const claude = fakeClaude({ initDelayMs: INIT_DELAY_MS, initModel: 'claude-opus-9' })
+  // A CLI whose own default is not the catalog's: startup reports it through get_settings,
+  // since system/init arrives only with the first command.
+  const claude = fakeClaude({
+    initDelayMs: INIT_DELAY_MS,
+    initModel: 'claude-opus-9',
+    settings: {
+      applied: { model: 'claude-opus-9', effort: 'high', advisor: null, ultracode: false },
+      effective: { model: 'claude-opus-9', effortLevel: 'high', env: {} },
+      sources: {}
+    }
+  })
   adapter = new ClaudeStructuredSessionAdapter({
     resolveLaunch: async () => ({
       pathToClaudeCodeExecutable: 'claude',
@@ -80,8 +90,8 @@ afterEach(async () => {
   await rm(root, { recursive: true, force: true })
 })
 
-function claudeParams() {
-  return hostTestAttachParams(null, {
+function claudeParams(expectedRuntimeFence: number | null = null) {
+  return hostTestAttachParams(expectedRuntimeFence, {
     provider: 'claude',
     agent: 'claude',
     accountHome: { variable: 'CLAUDE_CONFIG_DIR', path: join(root, 'claude-home') },
@@ -131,8 +141,10 @@ describe('a publish-first Claude create whose init is slow', () => {
     await host.close(SESSION)
     const releasedFence = store.getRecord(SESSION)?.lease.runtimeFence ?? 0
 
-    // Reopening the chat: the surface's first hold resumes the session.
-    await host.hold(SESSION, 'chat-1')
+    // Starting the chat again resumes the session under a new fence.
+    await expect(host.attach(CALLER, claudeParams(releasedFence))).resolves.toMatchObject({
+      ok: true
+    })
     expect(store.getRecord(SESSION)?.lease.runtimeFence).toBeGreaterThan(releasedFence)
     // The new child's init reports its CLI default; the saved pick is restored over it.
     expect(store.getRecord(SESSION)?.options?.model).toBe('opus')
