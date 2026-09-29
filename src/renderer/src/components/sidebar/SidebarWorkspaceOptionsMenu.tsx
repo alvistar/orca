@@ -56,6 +56,7 @@ const SidebarWorkspaceOptionsMenu = React.memo(function SidebarWorkspaceOptionsM
                     )
               }
               data-workspace-board-preserve-open={preserveWorkspaceBoardOpen ? '' : undefined}
+              data-saved-view-focus-fallback=""
             >
               <SlidersHorizontal className="size-3.5" strokeWidth={2.25} />
               {hasAnyFilter && (
