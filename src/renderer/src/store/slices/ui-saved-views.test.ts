@@ -1,6 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { SidebarSavedView } from '../../../../shared/sidebar-saved-views'
+import {
+  SIDEBAR_VIEW_CAPTURED_FIELDS,
+  type SidebarSavedView
+} from '../../../../shared/sidebar-saved-views'
 import type { Repo } from '../../../../shared/repo-types'
+import type { AppState } from '../types'
+import {
+  capturePersistedUIWriteBaseline,
+  diffPersistedUIWriteFields
+} from './persisted-ui-write-baseline'
+import { SAVED_VIEW_DEACTIVATING_SETTERS } from './ui/ui-slice-saved-view-actions'
 import { createUIStore, makePersistedUI } from './ui-slice-test-harness'
 
 const setUI = vi.fn(() => Promise.resolve())
@@ -83,5 +92,428 @@ describe('saved sidebar views: hydration', () => {
     store.getState().hydratePersistedUI(makePersistedUI({ sidebarSavedViews: [savedView()] }))
 
     expect(store.getState().sidebarSavedViews[0].settings.filterRepoIds).toEqual(['repo-a'])
+  })
+})
+
+function seededStore() {
+  const store = createUIStore()
+  store.setState({ repos: [repo('repo-a'), repo('repo-b')] })
+  store.getState().hydratePersistedUI(makePersistedUI())
+  setUI.mockClear()
+  return store
+}
+
+function liveSettings(store: ReturnType<typeof createUIStore>) {
+  const s = store.getState()
+  return {
+    filterRepoIds: [...s.filterRepoIds],
+    groupBy: s.groupBy,
+    sortBy: s.sortBy,
+    projectOrderBy: s.projectOrderBy,
+    showSleepingWorkspaces: s.showSleepingWorkspaces,
+    hideDefaultBranchWorkspace: s.hideDefaultBranchWorkspace,
+    hideAutomationGeneratedWorkspaces: s.hideAutomationGeneratedWorkspaces,
+    hideCliCreatedWorkspaces: s.hideCliCreatedWorkspaces,
+    hideDetachedHeadWorkspaces: s.hideDetachedHeadWorkspaces,
+    hideWorkspacesFromOtherDevices: s.hideWorkspacesFromOtherDevices,
+    alwaysShowDefaultBranchWorkspace: s.alwaysShowDefaultBranchWorkspace,
+    workspaceHostScope: s.workspaceHostScope,
+    visibleWorkspaceHostIds: s.visibleWorkspaceHostIds
+  }
+}
+
+function pendingWrites(store: ReturnType<typeof createUIStore>) {
+  const state = store.getState()
+  const baseline = state.persistedUIWriteBaseline
+  if (!baseline) {
+    throw new Error('store was never hydrated')
+  }
+  return diffPersistedUIWriteFields(capturePersistedUIWriteBaseline(state), baseline)
+}
+
+function saveOrThrow(
+  store: ReturnType<typeof createUIStore>,
+  name: string,
+  color?: string
+): string {
+  const result = store.getState().saveSidebarView({ name, color })
+  if (!result.ok) {
+    throw new Error(`save failed: ${result.error.kind}`)
+  }
+  return result.id
+}
+
+describe('saved sidebar views: save', () => {
+  it('snapshots the live settings, appends the view, makes it active and persists both fields', () => {
+    const store = seededStore()
+    store.getState().setGroupBy('pr-status')
+    store.getState().setFilterRepoIds(['repo-b'])
+    setUI.mockClear()
+
+    const id = saveOrThrow(store, '  Review  ', '#EF4444')
+
+    const [view] = store.getState().sidebarSavedViews
+    expect(view).toMatchObject({ id, name: 'Review', color: '#ef4444' })
+    expect(view.settings).toMatchObject({ groupBy: 'pr-status', filterRepoIds: ['repo-b'] })
+    expect(store.getState().activeSidebarViewId).toBe(id)
+    expect(pendingWrites(store)).toMatchObject({
+      sidebarSavedViews: store.getState().sidebarSavedViews,
+      activeSidebarViewId: id
+    })
+  })
+
+  it('stores no color when none or an invalid one is given', () => {
+    const store = seededStore()
+
+    saveOrThrow(store, 'Plain')
+    saveOrThrow(store, 'Junk color', 'nope')
+
+    expect(store.getState().sidebarSavedViews.map((v) => v.color)).toEqual([undefined, undefined])
+  })
+
+  it('rejects an empty name', () => {
+    const store = seededStore()
+
+    expect(store.getState().saveSidebarView({ name: '   ' })).toEqual({
+      ok: false,
+      error: { kind: 'empty' }
+    })
+    expect(store.getState().sidebarSavedViews).toEqual([])
+    expect(pendingWrites(store)).toEqual({})
+  })
+
+  it('rejects a case-insensitive duplicate name and names the existing view', () => {
+    const store = seededStore()
+    saveOrThrow(store, 'Homelab')
+
+    expect(store.getState().saveSidebarView({ name: 'HOMELAB' })).toEqual({
+      ok: false,
+      error: { kind: 'duplicate', existingName: 'Homelab' }
+    })
+    expect(store.getState().sidebarSavedViews).toHaveLength(1)
+  })
+
+  it('rejects a save past the view limit', () => {
+    const store = seededStore()
+    for (let i = 0; i < 50; i++) {
+      saveOrThrow(store, `View ${i}`)
+    }
+
+    expect(store.getState().saveSidebarView({ name: 'One more' })).toEqual({
+      ok: false,
+      error: { kind: 'limit' }
+    })
+  })
+})
+
+describe('saved sidebar views: apply', () => {
+  function storeWithSavedView() {
+    const store = seededStore()
+    const s = store.getState()
+    s.setFilterRepoIds(['repo-a', 'repo-b'])
+    s.setGroupBy('workspace-status')
+    s.setSortBy('name')
+    s.setProjectOrderBy('recent')
+    s.setShowSleepingWorkspaces(false)
+    s.setHideDefaultBranchWorkspace(true)
+    s.setHideAutomationGeneratedWorkspaces(true)
+    s.setHideCliCreatedWorkspaces(true)
+    s.setHideDetachedHeadWorkspaces(true)
+    s.setHideWorkspacesFromOtherDevices(true)
+    s.setAlwaysShowDefaultBranchWorkspace(false)
+    s.setVisibleWorkspaceHostIds(['local', 'ssh:box'])
+    const saved = liveSettings(store)
+    const id = saveOrThrow(store, 'Everything')
+    // Raw write back to defaults: hydration would keep these unflushed local edits.
+    store.setState({
+      activeSidebarViewId: null,
+      filterRepoIds: [],
+      groupBy: 'repo',
+      sortBy: 'recent',
+      projectOrderBy: 'manual',
+      showSleepingWorkspaces: true,
+      hideDefaultBranchWorkspace: false,
+      hideAutomationGeneratedWorkspaces: false,
+      hideCliCreatedWorkspaces: false,
+      hideDetachedHeadWorkspaces: false,
+      hideWorkspacesFromOtherDevices: false,
+      alwaysShowDefaultBranchWorkspace: true,
+      workspaceHostScope: 'all',
+      visibleWorkspaceHostIds: null
+    })
+    setUI.mockClear()
+    return { store, id, saved }
+  }
+
+  it('restores every captured field in a single store update and becomes active', () => {
+    const { store, id, saved } = storeWithSavedView()
+    expect(liveSettings(store)).not.toEqual(saved)
+    const listener = vi.fn()
+    const unsubscribe = store.subscribe(listener)
+
+    store.getState().applySidebarView(id)
+    unsubscribe()
+
+    expect(listener).toHaveBeenCalledTimes(1)
+    expect(liveSettings(store)).toEqual(saved)
+    expect(store.getState().activeSidebarViewId).toBe(id)
+  })
+
+  it('persists host scope directly and the rest through the debounced writer', () => {
+    const { store, id } = storeWithSavedView()
+
+    store.getState().applySidebarView(id)
+
+    expect(setUI).toHaveBeenCalledTimes(1)
+    expect(setUI).toHaveBeenCalledWith({
+      workspaceHostScope: 'all',
+      visibleWorkspaceHostIds: ['local', 'ssh:box'],
+      collapsedGroups: []
+    })
+    expect(Object.keys(pendingWrites(store))).toEqual(
+      expect.arrayContaining([
+        'activeSidebarViewId',
+        'groupBy',
+        'sortBy',
+        'filterRepoIds',
+        'showSleepingWorkspaces'
+      ])
+    )
+  })
+
+  it('clears collapsed groups only when the grouping changes', () => {
+    const { store, id } = storeWithSavedView()
+    store.setState({ collapsedGroups: new Set(['repo:repo-a']) })
+    store.getState().applySidebarView(id)
+    expect(store.getState().collapsedGroups.size).toBe(0)
+
+    store.setState({ collapsedGroups: new Set(['workspace-status:done']) })
+    setUI.mockClear()
+    store.getState().applySidebarView(id)
+
+    expect(store.getState().collapsedGroups).toEqual(new Set(['workspace-status:done']))
+    expect(setUI).toHaveBeenCalledWith(
+      expect.not.objectContaining({ collapsedGroups: expect.anything() })
+    )
+  })
+
+  it('skips projects that were removed since the view was saved', () => {
+    const { store, id } = storeWithSavedView()
+    store.setState({ repos: [repo('repo-b')] })
+
+    store.getState().applySidebarView(id)
+
+    expect(store.getState().filterRepoIds).toEqual(['repo-b'])
+    expect(store.getState().sidebarSavedViews[0].settings.filterRepoIds).toEqual([
+      'repo-a',
+      'repo-b'
+    ])
+  })
+
+  it('applies no project filter when every saved project is gone', () => {
+    const { store, id } = storeWithSavedView()
+    store.setState({ repos: [repo('repo-z')] })
+
+    store.getState().applySidebarView(id)
+
+    expect(store.getState().filterRepoIds).toEqual([])
+  })
+
+  it('applies by 0-based position and ignores a position past the end', () => {
+    const { store, id } = storeWithSavedView()
+
+    store.getState().applySidebarViewAtIndex(3)
+    expect(store.getState().activeSidebarViewId).toBeNull()
+
+    store.getState().applySidebarViewAtIndex(0)
+    expect(store.getState().activeSidebarViewId).toBe(id)
+  })
+
+  it('ignores an unknown id', () => {
+    const { store } = storeWithSavedView()
+    const before = store.getState()
+
+    store.getState().applySidebarView('missing')
+
+    expect(store.getState()).toBe(before)
+  })
+})
+
+type SetterCase = [string, (s: AppState) => void]
+
+const DEACTIVATING_SETTER_CASES: SetterCase[] = [
+  ['setFilterRepoIds', (s) => s.setFilterRepoIds(['repo-a'])],
+  ['setGroupBy', (s) => s.setGroupBy('none')],
+  ['setSortBy', (s) => s.setSortBy('manual')],
+  ['setProjectOrderBy', (s) => s.setProjectOrderBy('recent')],
+  ['setShowSleepingWorkspaces', (s) => s.setShowSleepingWorkspaces(false)],
+  ['setHideDefaultBranchWorkspace', (s) => s.setHideDefaultBranchWorkspace(true)],
+  ['setHideAutomationGeneratedWorkspaces', (s) => s.setHideAutomationGeneratedWorkspaces(true)],
+  ['setHideCliCreatedWorkspaces', (s) => s.setHideCliCreatedWorkspaces(true)],
+  ['setHideDetachedHeadWorkspaces', (s) => s.setHideDetachedHeadWorkspaces(true)],
+  ['setHideWorkspacesFromOtherDevices', (s) => s.setHideWorkspacesFromOtherDevices(true)],
+  ['setAlwaysShowDefaultBranchWorkspace', (s) => s.setAlwaysShowDefaultBranchWorkspace(false)],
+  ['setWorkspaceHostScope', (s) => s.setWorkspaceHostScope('local')],
+  ['setVisibleWorkspaceHostIds', (s) => s.setVisibleWorkspaceHostIds(['local', 'ssh:box'])]
+]
+
+describe('saved sidebar views: deactivation', () => {
+  it('wraps a setter for every captured field', () => {
+    expect(Object.keys(SAVED_VIEW_DEACTIVATING_SETTERS).sort()).toEqual(
+      DEACTIVATING_SETTER_CASES.map(([name]) => name).sort()
+    )
+    expect(new Set(Object.values(SAVED_VIEW_DEACTIVATING_SETTERS))).toEqual(
+      new Set(SIDEBAR_VIEW_CAPTURED_FIELDS)
+    )
+  })
+
+  it.each(DEACTIVATING_SETTER_CASES)(
+    '%s changes its setting and clears the active view',
+    (_name, change) => {
+      const store = seededStore()
+      saveOrThrow(store, 'Default')
+      const before = liveSettings(store)
+
+      change(store.getState())
+
+      expect(liveSettings(store)).not.toEqual(before)
+      expect(store.getState().activeSidebarViewId).toBeNull()
+      expect(store.getState().sidebarSavedViews).toHaveLength(1)
+    }
+  )
+
+  it('keeps the view active when a setter re-selects the current value', () => {
+    const store = seededStore()
+    const id = saveOrThrow(store, 'Default')
+
+    store.getState().setGroupBy(store.getState().groupBy)
+    store.getState().setFilterRepoIds([])
+
+    expect(store.getState().activeSidebarViewId).toBe(id)
+  })
+
+  it('keeps the view active on catalog pruning and remote hydration', () => {
+    const store = seededStore()
+    store.getState().setFilterRepoIds(['repo-a', 'repo-b'])
+    const id = saveOrThrow(store, 'Both')
+
+    // Catalog refresh prunes a removed repo through a raw write.
+    store.setState({ filterRepoIds: ['repo-a'] })
+    // A paired device changes a captured field; the broadcast rehydrates.
+    store.getState().hydratePersistedUI(
+      makePersistedUI({
+        groupBy: 'none',
+        sidebarSavedViews: store.getState().sidebarSavedViews,
+        activeSidebarViewId: id
+      })
+    )
+
+    expect(store.getState().activeSidebarViewId).toBe(id)
+  })
+
+  it('does not touch non-captured settings or their persistence', () => {
+    const store = seededStore()
+    const id = saveOrThrow(store, 'Default')
+
+    store.getState().toggleCollapsedGroup('repo:repo-a')
+
+    expect(store.getState().activeSidebarViewId).toBe(id)
+  })
+
+  it('clears the active view on request and keeps the settings', () => {
+    const store = seededStore()
+    store.getState().setGroupBy('none')
+    saveOrThrow(store, 'Flat')
+    setUI.mockClear()
+
+    store.getState().clearActiveSidebarView()
+
+    expect(store.getState().activeSidebarViewId).toBeNull()
+    expect(store.getState().groupBy).toBe('none')
+  })
+})
+
+describe('saved sidebar views: manage', () => {
+  it('renames a view, allowing a case change of its own name', () => {
+    const store = seededStore()
+    const id = saveOrThrow(store, 'homelab')
+    saveOrThrow(store, 'Work')
+
+    expect(store.getState().renameSidebarView(id, ' Homelab ')).toEqual({ ok: true, id })
+    expect(store.getState().sidebarSavedViews[0].name).toBe('Homelab')
+    expect(store.getState().renameSidebarView(id, 'work')).toEqual({
+      ok: false,
+      error: { kind: 'duplicate', existingName: 'Work' }
+    })
+    expect(store.getState().renameSidebarView(id, '')).toEqual({
+      ok: false,
+      error: { kind: 'empty' }
+    })
+  })
+
+  it('sets and clears a color without changing the active view', () => {
+    const store = seededStore()
+    const id = saveOrThrow(store, 'Homelab')
+
+    store.getState().setSidebarViewColor(id, 'abc')
+    expect(store.getState().sidebarSavedViews[0].color).toBe('#aabbcc')
+
+    store.getState().setSidebarViewColor(id, null)
+    expect(store.getState().sidebarSavedViews[0]).not.toHaveProperty('color')
+    expect(store.getState().activeSidebarViewId).toBe(id)
+  })
+
+  it('deletes the active view, leaving the live settings untouched', () => {
+    const store = seededStore()
+    store.getState().setGroupBy('none')
+    const id = saveOrThrow(store, 'Flat')
+    setUI.mockClear()
+
+    const deletion = store.getState().deleteSidebarView(id)
+
+    expect(deletion).toMatchObject({ index: 0, wasActive: true })
+    expect(store.getState().sidebarSavedViews).toEqual([])
+    expect(store.getState().activeSidebarViewId).toBeNull()
+    expect(store.getState().groupBy).toBe('none')
+  })
+
+  it('undo restores the view at its index and as active', () => {
+    const store = seededStore()
+    saveOrThrow(store, 'First')
+    const id = saveOrThrow(store, 'Second')
+    saveOrThrow(store, 'Third')
+    store.getState().applySidebarView(id)
+
+    const deletion = store.getState().deleteSidebarView(id)!
+    store.getState().restoreSidebarView(deletion)
+
+    expect(store.getState().sidebarSavedViews.map((v) => v.name)).toEqual([
+      'First',
+      'Second',
+      'Third'
+    ])
+    expect(store.getState().activeSidebarViewId).toBe(id)
+  })
+
+  it('undo after a settings change restores the view but not as active', () => {
+    const store = seededStore()
+    const id = saveOrThrow(store, 'Only')
+
+    const deletion = store.getState().deleteSidebarView(id)!
+    store.getState().setGroupBy('none')
+    store.getState().restoreSidebarView(deletion)
+
+    expect(store.getState().sidebarSavedViews.map((v) => v.id)).toEqual([id])
+    expect(store.getState().activeSidebarViewId).toBeNull()
+  })
+
+  it('opens and closes the saved-view dialogs', () => {
+    const store = seededStore()
+
+    store.getState().openSavedViewDialog('manage')
+    expect(store.getState().savedViewDialog).toEqual({ kind: 'manage', returnFocusTo: null })
+
+    store.getState().closeSavedViewDialog()
+    expect(store.getState().savedViewDialog).toBeNull()
   })
 })
