@@ -432,16 +432,104 @@ describe('saved sidebar views: deactivation', () => {
     expect(store.getState().activeSidebarViewId).toBe(id)
   })
 
-  it('clears the active view on request and keeps the settings', () => {
+  it('drops the pre-view settings when a manual change deactivates the view', () => {
+    const store = seededStore()
+    const id = saveOrThrow(store, 'Default')
+    store.getState().setGroupBy('none')
+    store.getState().applySidebarView(id)
+
+    store.getState().setSortBy('name')
+
+    expect(store.getState().sidebarSettingsBeforeView).toBeNull()
+  })
+})
+
+describe('saved sidebar views: clear', () => {
+  function storeWithFlatView() {
     const store = seededStore()
     store.getState().setGroupBy('none')
-    saveOrThrow(store, 'Flat')
+    store.getState().setVisibleWorkspaceHostIds(['ssh:box'])
+    const id = saveOrThrow(store, 'Flat')
+    store.getState().clearActiveSidebarView()
+    store.setState({ groupBy: 'repo', visibleWorkspaceHostIds: null, workspaceHostScope: 'all' })
+    store.getState().setFilterRepoIds(['repo-b'])
+    const before = liveSettings(store)
     setUI.mockClear()
+    return { store, id, before }
+  }
+
+  it('restores the settings from before the view was applied', () => {
+    const { store, id, before } = storeWithFlatView()
+    store.getState().applySidebarView(id)
+    expect(store.getState().groupBy).toBe('none')
 
     store.getState().clearActiveSidebarView()
 
+    expect(liveSettings(store)).toEqual(before)
     expect(store.getState().activeSidebarViewId).toBeNull()
-    expect(store.getState().groupBy).toBe('none')
+    expect(store.getState().sidebarSettingsBeforeView).toBeNull()
+    expect(setUI).toHaveBeenLastCalledWith(
+      expect.objectContaining({ workspaceHostScope: 'all', visibleWorkspaceHostIds: null })
+    )
+  })
+
+  it('keeps the first snapshot across view-to-view switches', () => {
+    const { store, id, before } = storeWithFlatView()
+    store.getState().applySidebarView(id)
+    const otherId = saveOrThrow(store, 'Other')
+    store.getState().applySidebarView(id)
+    store.getState().applySidebarView(otherId)
+
+    store.getState().clearActiveSidebarView()
+
+    expect(liveSettings(store)).toEqual(before)
+  })
+
+  it('persists the snapshot so a restart can still restore it', () => {
+    const { store, id } = storeWithFlatView()
+
+    store.getState().applySidebarView(id)
+
+    expect(pendingWrites(store)).toHaveProperty('sidebarSettingsBeforeView')
+    const restarted = createUIStore()
+    restarted.getState().hydratePersistedUI(
+      makePersistedUI({
+        sidebarSavedViews: store.getState().sidebarSavedViews,
+        activeSidebarViewId: id,
+        sidebarSettingsBeforeView: store.getState().sidebarSettingsBeforeView
+      })
+    )
+    expect(restarted.getState().sidebarSettingsBeforeView).toEqual(
+      store.getState().sidebarSettingsBeforeView
+    )
+  })
+
+  it('ignores a persisted snapshot when no view is active', () => {
+    const { store, id } = storeWithFlatView()
+    store.getState().applySidebarView(id)
+    const restarted = createUIStore()
+
+    restarted.getState().hydratePersistedUI(
+      makePersistedUI({
+        sidebarSavedViews: store.getState().sidebarSavedViews,
+        activeSidebarViewId: null,
+        sidebarSettingsBeforeView: store.getState().sidebarSettingsBeforeView
+      })
+    )
+
+    expect(restarted.getState().sidebarSettingsBeforeView).toBeNull()
+  })
+
+  it('undoing the delete of the active view brings its snapshot back', () => {
+    const { store, id, before } = storeWithFlatView()
+    store.getState().applySidebarView(id)
+
+    const deletion = store.getState().deleteSidebarView(id)!
+    expect(store.getState().sidebarSettingsBeforeView).toBeNull()
+    store.getState().restoreSidebarView(deletion)
+    store.getState().clearActiveSidebarView()
+
+    expect(liveSettings(store)).toEqual(before)
   })
 })
 

@@ -71,6 +71,7 @@ export function mergeHostWebUIState(
     workspaceHostOrder: local.workspaceHostOrder,
     sidebarSavedViews: local.sidebarSavedViews,
     activeSidebarViewId: local.activeSidebarViewId,
+    sidebarSettingsBeforeView: local.sidebarSettingsBeforeView,
     agentsVisibleHostIds: local.agentsVisibleHostIds,
     agentsFilterRepoIds: local.agentsFilterRepoIds,
     agentsShowChildAgents: local.agentsShowChildAgents,

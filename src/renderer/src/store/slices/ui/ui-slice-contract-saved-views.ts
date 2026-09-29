@@ -1,6 +1,7 @@
 import type {
   SidebarSavedView,
-  SidebarViewNameError
+  SidebarViewNameError,
+  SidebarViewSettings
 } from '../../../../../shared/sidebar-saved-views'
 
 export type { SidebarViewNameError }
@@ -15,6 +16,7 @@ export type SidebarViewDeletion = {
   index: number
   wasActive: boolean
   liveSettingsKey: string
+  settingsBeforeView: SidebarViewSettings | null
 }
 
 export type SavedViewDialogKind = 'save' | 'manage'
@@ -28,6 +30,8 @@ export type SavedViewDialogState = {
 export type UISliceSavedViews = {
   sidebarSavedViews: SidebarSavedView[]
   activeSidebarViewId: string | null
+  /** Settings from before the first view was applied; null when no view is active. */
+  sidebarSettingsBeforeView: SidebarViewSettings | null
   saveSidebarView: (input: { name: string; color?: string | null }) => SidebarViewNameResult
   applySidebarView: (id: string) => void
   /** Applies the view at a 0-based position; a position past the end is a no-op. */
@@ -36,7 +40,7 @@ export type UISliceSavedViews = {
   setSidebarViewColor: (id: string, color: string | null) => void
   deleteSidebarView: (id: string) => SidebarViewDeletion | null
   restoreSidebarView: (deletion: SidebarViewDeletion) => void
-  /** Drops the active marker and keeps the current sidebar settings. */
+  /** Drops the active marker and restores the settings from before the first view was applied. */
   clearActiveSidebarView: () => void
   savedViewDialog: SavedViewDialogState | null
   openSavedViewDialog: (kind: SavedViewDialogKind, returnFocusTo?: HTMLElement | null) => void

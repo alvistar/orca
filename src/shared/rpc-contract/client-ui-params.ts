@@ -162,6 +162,7 @@ export const UiUpdateFields = z
     // Why lenient: renderer hydration validates saved views entry by entry.
     sidebarSavedViews: UnknownRecordArray.optional(),
     activeSidebarViewId: NullableString.optional(),
+    sidebarSettingsBeforeView: UnknownRecord.nullable().optional(),
     ...ClientUiWorkspaceFilterFields,
     // Why: rides App.tsx's debounced writer, so omitting it rejected that entire
     // payload (sidebar widths, filters, agent acks) for every paired client.

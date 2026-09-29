@@ -124,7 +124,13 @@ export function resolveSidebarViewSettings(
   view: SidebarSavedView,
   knownRepoIds: ReadonlySet<string>
 ): SidebarViewLiveSettings {
-  const { settings } = view
+  return resolveSidebarSettings(view.settings, knownRepoIds)
+}
+
+export function resolveSidebarSettings(
+  settings: SidebarViewSettings,
+  knownRepoIds: ReadonlySet<string>
+): SidebarViewLiveSettings {
   const savedScope = normalizeExecutionHostScope(settings.workspaceHostScope)
   // Same fallback as hydration: a legacy single-scope view with no visibility list focuses that host.
   const visibleWorkspaceHostIds =
@@ -284,11 +290,26 @@ export function normalizeActiveSidebarViewId(
 }
 
 export function hydrateSidebarSavedViews(
-  ui: Pick<PersistedUIState, 'sidebarSavedViews' | 'activeSidebarViewId'>
-): { sidebarSavedViews: SidebarSavedView[]; activeSidebarViewId: string | null } {
+  ui: Pick<
+    PersistedUIState,
+    'sidebarSavedViews' | 'activeSidebarViewId' | 'sidebarSettingsBeforeView'
+  >
+): {
+  sidebarSavedViews: SidebarSavedView[]
+  activeSidebarViewId: string | null
+  sidebarSettingsBeforeView: SidebarViewSettings | null
+} {
   const sidebarSavedViews = normalizeSidebarSavedViews(ui.sidebarSavedViews)
+  const activeSidebarViewId = normalizeActiveSidebarViewId(
+    ui.activeSidebarViewId,
+    sidebarSavedViews
+  )
   return {
     sidebarSavedViews,
-    activeSidebarViewId: normalizeActiveSidebarViewId(ui.activeSidebarViewId, sidebarSavedViews)
+    activeSidebarViewId,
+    // Only meaningful while a view is active.
+    sidebarSettingsBeforeView: activeSidebarViewId
+      ? normalizeViewSettings(ui.sidebarSettingsBeforeView)
+      : null
   }
 }

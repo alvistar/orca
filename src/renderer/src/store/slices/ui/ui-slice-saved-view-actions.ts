@@ -5,11 +5,12 @@ import { normalizeRepoBadgeColor } from '../../../../../shared/repo-badge-color'
 import {
   MAX_SIDEBAR_SAVED_VIEWS,
   findSidebarViewNameConflict,
-  resolveSidebarViewSettings,
+  resolveSidebarSettings,
   snapshotSidebarViewSettings,
   validateSidebarViewName,
   type SidebarSavedView,
-  type SidebarViewCapturedField
+  type SidebarViewCapturedField,
+  type SidebarViewSettings
 } from '../../../../../shared/sidebar-saved-views'
 
 /** User-facing setters that clear the active view, keyed to the captured field each one writes. */
@@ -62,7 +63,7 @@ export function withSavedViewDeactivation(
       const before = get().activeSidebarViewId === null ? null : liveSettingsKey(get())
       original(...args)
       if (before !== null && liveSettingsKey(get()) !== before) {
-        set({ activeSidebarViewId: null })
+        set({ activeSidebarViewId: null, sidebarSettingsBeforeView: null })
       }
     }
     Object.assign(wrapped, { [name]: setter })
@@ -70,10 +71,44 @@ export function withSavedViewDeactivation(
   return wrapped
 }
 
+/** The pre-view snapshot survives view-to-view switches; only the first apply takes it. */
+function settingsBeforeView(state: AppState): SidebarViewSettings | null {
+  return state.activeSidebarViewId === null
+    ? snapshotSidebarViewSettings(state)
+    : state.sidebarSettingsBeforeView
+}
+
+/** One store update for every captured field, plus the host-scope writes the debounced writer skips. */
+function applySidebarSettings(
+  set: UISliceSet,
+  get: UISliceGet,
+  settings: SidebarViewSettings,
+  marker: Pick<AppState, 'activeSidebarViewId' | 'sidebarSettingsBeforeView'>
+): void {
+  const s = get()
+  const live = resolveSidebarSettings(settings, new Set(s.repos.map((repo) => repo.id)))
+  // Same rule as setGroupBy: collapsed keys are per grouping mode.
+  const groupByChanged = live.groupBy !== s.groupBy
+  set({
+    ...live,
+    ...marker,
+    ...(groupByChanged ? { collapsedGroups: new Set<string>() } : {})
+  })
+  // Why direct: the debounced writer does not own these, matching their own setters.
+  window.api.ui
+    .set({
+      workspaceHostScope: live.workspaceHostScope,
+      visibleWorkspaceHostIds: live.visibleWorkspaceHostIds,
+      ...(groupByChanged ? { collapsedGroups: [] } : {})
+    })
+    .catch(console.error)
+}
+
 export function createUiSavedViewActions(set: UISliceSet, get: UISliceGet): Partial<UISlice> {
   return {
     sidebarSavedViews: [],
     activeSidebarViewId: null,
+    sidebarSettingsBeforeView: null,
 
     saveSidebarView: ({ name: rawName, color }) => {
       const s = get()
@@ -90,7 +125,11 @@ export function createUiSavedViewActions(set: UISliceSet, get: UISliceGet): Part
         color
       )
       const sidebarSavedViews = [...s.sidebarSavedViews, view]
-      set({ sidebarSavedViews, activeSidebarViewId: view.id })
+      set({
+        sidebarSavedViews,
+        activeSidebarViewId: view.id,
+        sidebarSettingsBeforeView: settingsBeforeView(s)
+      })
       return { ok: true, id: view.id }
     },
 
@@ -100,22 +139,10 @@ export function createUiSavedViewActions(set: UISliceSet, get: UISliceGet): Part
       if (!view) {
         return
       }
-      const live = resolveSidebarViewSettings(view, new Set(s.repos.map((repo) => repo.id)))
-      // Same rule as setGroupBy: collapsed keys are per grouping mode.
-      const groupByChanged = live.groupBy !== s.groupBy
-      set({
-        ...live,
+      applySidebarSettings(set, get, view.settings, {
         activeSidebarViewId: id,
-        ...(groupByChanged ? { collapsedGroups: new Set<string>() } : {})
+        sidebarSettingsBeforeView: settingsBeforeView(s)
       })
-      // Why direct: the debounced writer does not own these, matching their own setters.
-      window.api.ui
-        .set({
-          workspaceHostScope: live.workspaceHostScope,
-          visibleWorkspaceHostIds: live.visibleWorkspaceHostIds,
-          ...(groupByChanged ? { collapsedGroups: [] } : {})
-        })
-        .catch(console.error)
     },
 
     applySidebarViewAtIndex: (index) => {
@@ -154,17 +181,27 @@ export function createUiSavedViewActions(set: UISliceSet, get: UISliceGet): Part
       }
       const wasActive = s.activeSidebarViewId === id
       const sidebarSavedViews = s.sidebarSavedViews.filter((view) => view.id !== id)
-      const activeSidebarViewId = wasActive ? null : s.activeSidebarViewId
-      set({ sidebarSavedViews, activeSidebarViewId })
+      set(
+        wasActive
+          ? { sidebarSavedViews, activeSidebarViewId: null, sidebarSettingsBeforeView: null }
+          : { sidebarSavedViews }
+      )
       return {
         view: s.sidebarSavedViews[index],
         index,
         wasActive,
-        liveSettingsKey: liveSettingsKey(s)
+        liveSettingsKey: liveSettingsKey(s),
+        settingsBeforeView: wasActive ? s.sidebarSettingsBeforeView : null
       }
     },
 
-    restoreSidebarView: ({ view, index, wasActive, liveSettingsKey: keyAtDelete }) => {
+    restoreSidebarView: ({
+      view,
+      index,
+      wasActive,
+      liveSettingsKey: keyAtDelete,
+      settingsBeforeView: snapshotAtDelete
+    }) => {
       const s = get()
       if (
         s.sidebarSavedViews.some((existing) => existing.id === view.id) ||
@@ -178,15 +215,28 @@ export function createUiSavedViewActions(set: UISliceSet, get: UISliceGet): Part
       // Only reclaim "active" if the sidebar still shows what it showed at delete time.
       const reactivate =
         wasActive && s.activeSidebarViewId === null && liveSettingsKey(s) === keyAtDelete
-      const activeSidebarViewId = reactivate ? view.id : s.activeSidebarViewId
-      set({ sidebarSavedViews, activeSidebarViewId })
+      set(
+        reactivate
+          ? {
+              sidebarSavedViews,
+              activeSidebarViewId: view.id,
+              sidebarSettingsBeforeView: snapshotAtDelete
+            }
+          : { sidebarSavedViews }
+      )
     },
 
     clearActiveSidebarView: () => {
-      if (get().activeSidebarViewId === null) {
+      const s = get()
+      if (s.activeSidebarViewId === null) {
         return
       }
-      set({ activeSidebarViewId: null })
+      const cleared = { activeSidebarViewId: null, sidebarSettingsBeforeView: null }
+      if (s.sidebarSettingsBeforeView) {
+        applySidebarSettings(set, get, s.sidebarSettingsBeforeView, cleared)
+      } else {
+        set(cleared)
+      }
     },
 
     savedViewDialog: null,

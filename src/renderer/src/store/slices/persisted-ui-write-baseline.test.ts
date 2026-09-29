@@ -30,6 +30,7 @@ function makeBaseline(overrides: Partial<PersistedUIWriteBaseline> = {}): Persis
     filterRepoIds: [],
     sidebarSavedViews: [],
     activeSidebarViewId: null,
+    sidebarSettingsBeforeView: null,
     acknowledgedAgentsByPaneKey: {},
     activityClearedAtByPaneKey: {},
     manuallyUnreadTurnsByPaneKey: {},

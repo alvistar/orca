@@ -59,6 +59,13 @@ describe('client UI RPC pairing-local field seams', () => {
       }
     ],
     activeSidebarViewId: 'view-1',
+    sidebarSettingsBeforeView: {
+      filterRepoIds: [],
+      groupBy: 'workspace-status',
+      sortBy: 'name',
+      projectOrderBy: 'manual',
+      hideDefaultBranchWorkspace: false
+    },
     agentsVisibleHostIds: ['runtime:web-11111111-2222-3333-4444-555555555555'],
     agentsFilterRepoIds: ['repo-a'],
     agentsShowChildAgents: true,

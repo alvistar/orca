@@ -30,6 +30,7 @@ export type PersistedUIWriteBaseline = {
   filterRepoIds: readonly string[]
   sidebarSavedViews: NonNullable<PersistedUIState['sidebarSavedViews']>
   activeSidebarViewId: string | null
+  sidebarSettingsBeforeView: PersistedUIState['sidebarSettingsBeforeView'] | null
   acknowledgedAgentsByPaneKey: Record<string, number>
   activityClearedAtByPaneKey: Record<string, number>
   manuallyUnreadTurnsByPaneKey: Record<string, number>
@@ -61,6 +62,7 @@ const PERSISTED_UI_WRITE_BASELINE_FIELD_SET = {
   filterRepoIds: true,
   sidebarSavedViews: true,
   activeSidebarViewId: true,
+  sidebarSettingsBeforeView: true,
   acknowledgedAgentsByPaneKey: true,
   activityClearedAtByPaneKey: true,
   manuallyUnreadTurnsByPaneKey: true
@@ -103,7 +105,7 @@ function writeFieldEqual(field: keyof PersistedUIWriteBaseline, a: unknown, b: u
   if (field === 'filterRepoIds') {
     return stringArrayEqual(a as readonly string[], b as readonly string[])
   }
-  if (field === 'sidebarSavedViews') {
+  if (field === 'sidebarSavedViews' || field === 'sidebarSettingsBeforeView') {
     return JSON.stringify(a) === JSON.stringify(b)
   }
   if (

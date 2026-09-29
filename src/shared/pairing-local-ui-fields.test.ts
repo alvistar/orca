@@ -12,6 +12,7 @@ describe('pairing-local UI fields', () => {
       'workspaceHostOrder',
       'sidebarSavedViews',
       'activeSidebarViewId',
+      'sidebarSettingsBeforeView',
       'agentsVisibleHostIds',
       'agentsFilterRepoIds',
       'agentsShowChildAgents',
