@@ -12,6 +12,9 @@ export const PAIRING_LOCAL_UI_FIELDS = [
   'hideWorkspacesFromOtherDevices',
   'manualRepoOrder',
   'workspaceHostOrder',
+  // Saved views reference this client's repos and hosts.
+  'sidebarSavedViews',
+  'activeSidebarViewId',
   // Agent View filters and presentation belong to each client's host catalog and viewport.
   'agentsVisibleHostIds',
   'agentsFilterRepoIds',

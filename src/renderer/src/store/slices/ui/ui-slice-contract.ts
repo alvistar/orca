@@ -7,6 +7,7 @@ import type {
   UISlicePreferences,
   UISliceSurfaces
 } from './ui-slice-contract-preferences'
+import type { UISliceSavedViews } from './ui-slice-contract-saved-views'
 
 export type {
   AgentSendPopoverTargetMode,
@@ -29,7 +30,8 @@ export type UISlice = UISliceCore &
   UISliceContextual &
   UISlicePreferences &
   UISliceSurfaces &
-  UISlicePersistence
+  UISlicePersistence &
+  UISliceSavedViews
 
 type UISliceStateCreator = StateCreator<AppState, [], [], UISlice>
 export type UISliceSet = Parameters<UISliceStateCreator>[0]
