@@ -12,6 +12,7 @@ import { RightSidebarToggle, TitlebarMainStrip } from './TitlebarMainStrip'
 import type { AppChromeLayout } from './use-app-chrome-layout'
 import type { FloatingWorkspacePanelState } from './use-floating-workspace-panel'
 import { SavedViewDialogsHost } from '../components/sidebar/SavedViewDialogsHost'
+import { SavedViewAccentOverlay } from './SavedViewAccentOverlay'
 
 const Landing = lazy(() => import('../components/Landing'))
 const WorktreeCreationPanel = lazy(
@@ -246,6 +247,7 @@ export function AppWorkspaceShell(props: {
         ) : null}
       </div>
       <SavedViewDialogsHost />
+      <SavedViewAccentOverlay />
     </RecoverableRenderErrorBoundary>
   )
 }

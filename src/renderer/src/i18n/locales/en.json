@@ -47,7 +47,11 @@
       "paletteSaveKeyword": "save",
       "paletteManage": "Manage saved views…",
       "paletteManageDescription": "Rename, recolor or delete saved views",
-      "paletteManageKeyword": "manage"
+      "paletteManageKeyword": "manage",
+      "chipLabel": "Saved view: {{name}}. Switch view",
+      "clear": "Clear saved view",
+      "appliedAnnouncement": "Saved view {{name}} applied",
+      "clearedAnnouncement": "Saved view cleared"
     }
   },
   "app": {
