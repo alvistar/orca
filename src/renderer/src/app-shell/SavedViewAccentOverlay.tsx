@@ -3,6 +3,9 @@ import { useState } from 'react'
 import { useActiveSidebarView } from '../components/sidebar/SidebarSavedViewChip'
 import { cn } from '@/lib/utils'
 
+// Why: macOS masks the window to rounded corners (16pt on current releases); a square frame loses its corners.
+const IS_MAC = typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac')
+
 /** 2px window frame in the active saved view's color; decorative, never takes input or layout. */
 export function SavedViewAccentOverlay(): React.JSX.Element | null {
   const activeView = useActiveSidebarView()
@@ -22,6 +25,7 @@ export function SavedViewAccentOverlay(): React.JSX.Element | null {
       aria-hidden
       className={cn(
         'pointer-events-none fixed inset-0 z-40 border-2',
+        IS_MAC && 'rounded-2xl',
         color
           ? 'opacity-100'
           : 'opacity-0 motion-safe:transition-opacity motion-safe:duration-150 motion-safe:ease-out'
