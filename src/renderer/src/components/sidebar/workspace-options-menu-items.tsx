@@ -21,6 +21,7 @@ import { PROJECT_ORDER_OPTIONS, SORT_OPTIONS } from './sidebar-workspace-option-
 import { WorktreeCardDisplayMenuSection } from './WorktreeCardDisplayMenuSection'
 import { translate } from '@/i18n/i18n'
 import { SidebarGroupByToggle } from './SidebarGroupByToggle'
+import { SidebarSavedViewsMenuRow } from './SidebarSavedViewsMenu'
 
 export function useWorkspaceOptionsFilterBadge(): {
   hasAnyFilter: boolean
@@ -114,6 +115,7 @@ export function WorkspaceOptionsMenuItems({
           'Workspace options'
         )}
       </DropdownMenuLabel>
+      <SidebarSavedViewsMenuRow preserveWorkspaceBoardOpen={preserveWorkspaceBoardOpen} />
       {/* Why: host + project filters share one section and the same single-row
           shell as Sort by (label left, value right) so the menu stays flat. */}
       {(showHostScopeControls || repos.length > 1) && (
