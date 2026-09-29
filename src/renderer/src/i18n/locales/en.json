@@ -14,7 +14,7 @@
       "colorAction": "Change color of {{name}}",
       "deleteAction": "Delete {{name}}",
       "manageTitle": "Saved views",
-      "manageDescription": "Views 1–9 can be switched with the \"Select saved view\" shortcut.",
+      "manageDescription": "Views 1–9 can be switched with the \"Select Saved View 1–9\" shortcut.",
       "manageEmpty": "No saved views.",
       "saveCurrentShort": "Save current view",
       "done": "Done",
