@@ -21,7 +21,7 @@ const CHIP_FADED = `invisible opacity-0 ${FADE}`
 const TITLE_HIDDEN = 'invisible opacity-0'
 const TITLE_SHOWN = `visible opacity-100 ${FADE}`
 
-function useActiveSidebarView(): SidebarSavedView | null {
+export function useActiveSidebarView(): SidebarSavedView | null {
   return useAppStore(
     (s) => s.sidebarSavedViews.find((view) => view.id === s.activeSidebarViewId) ?? null
   )

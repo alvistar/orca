@@ -1,4 +1,4 @@
-import React, { useId, useState } from 'react'
+import React, { useId, useRef, useState } from 'react'
 import { Palette, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAppStore } from '@/store'
@@ -15,7 +15,10 @@ import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { translate } from '@/i18n/i18n'
-import type { SidebarSavedView } from '../../../../shared/sidebar-saved-views'
+import {
+  SIDEBAR_VIEW_SHORTCUT_COUNT,
+  type SidebarSavedView
+} from '../../../../shared/sidebar-saved-views'
 import type { SidebarViewNameError } from '@/store/slices/ui/ui-slice-contract-saved-views'
 import { SavedViewColorDot, SavedViewColorField } from './SavedViewColorControls'
 import { savedViewNameErrorMessage, validateSavedViewName } from './saved-view-name-validation'
@@ -60,6 +63,8 @@ function RenameField({
   const [submitError, setSubmitError] = useState<SidebarViewNameError | null>(null)
   const error = validateSavedViewName(views, name, view.id) ?? submitError
   const errorId = useId()
+  // Why: Esc reverts through the dialog's escape handler, and the unmount must not then commit.
+  const cancelledRef = useRef(false)
 
   const commit = (): void => {
     if (error) {
@@ -89,9 +94,17 @@ function RenameField({
           if (event.key === 'Enter') {
             event.preventDefault()
             commit()
+          } else if (event.key === 'Escape') {
+            cancelledRef.current = true
           }
         }}
-        onBlur={onDone}
+        onBlur={() => {
+          if (cancelledRef.current || error) {
+            onDone()
+          } else {
+            commit()
+          }
+        }}
       />
       {error ? (
         <p id={errorId} className="text-xs text-destructive">
@@ -138,7 +151,7 @@ function ViewRow({
   return (
     <li className="flex min-h-9 items-center gap-2 px-1">
       <span className="w-3 shrink-0 text-right text-[11px] text-muted-foreground tabular-nums">
-        {index < 9 ? index + 1 : ''}
+        {index < SIDEBAR_VIEW_SHORTCUT_COUNT ? index + 1 : ''}
       </span>
       <SavedViewColorDot color={view.color} />
       {renaming ? (
@@ -223,7 +236,7 @@ export function ManageSidebarViewsDialog({
           <DialogDescription>
             {translate(
               'sidebar.savedViews.manageDescription',
-              'Views 1–9 can be switched with the "Select saved view" shortcut.'
+              'Views 1–9 can be switched with the "Select Saved View 1–9" shortcut.'
             )}
           </DialogDescription>
         </DialogHeader>

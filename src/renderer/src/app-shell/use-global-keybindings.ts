@@ -188,6 +188,22 @@ export function useGlobalKeybindings(args: {
         return
       }
 
+      // Before the editable-surface bail so the chord also works in the editor; unbound by default,
+      // and a position past the last saved view is a no-op.
+      const savedViewIndex = matchKeybindingDigitIndex(
+        'sidebar.view.selectByIndex',
+        input,
+        shortcutPlatform,
+        keybindings,
+        { context, terminalShortcutPolicy }
+      )
+      if (savedViewIndex !== null) {
+        input.preventDefault()
+        notifyTerminalCapture('sidebar.view.selectByIndex')
+        useAppStore.getState().applySidebarViewAtIndex(savedViewIndex)
+        return
+      }
+
       // Skip editable surfaces so TipTap's Cmd+B bold works; this renderer-side fallback covers the blur→press IPC race (docs/markdown-cmd-b-bold-design.md).
       if (isEditableTarget(input.target)) {
         return
@@ -244,21 +260,6 @@ export function useGlobalKeybindings(args: {
         if (matchShortcut(actionId) && handlers.get(actionId)?.()) {
           return
         }
-      }
-
-      // Unbound by default; a position past the last saved view is a no-op.
-      const savedViewIndex = matchKeybindingDigitIndex(
-        'sidebar.view.selectByIndex',
-        input,
-        shortcutPlatform,
-        keybindings,
-        { context, terminalShortcutPolicy }
-      )
-      if (savedViewIndex !== null) {
-        input.preventDefault()
-        notifyTerminalCapture('sidebar.view.selectByIndex')
-        useAppStore.getState().applySidebarViewAtIndex(savedViewIndex)
-        return
       }
 
       // Unbound by default, so it runs after the built-in alias handlers above; only consumes the chord when the active worktree has unsent notes.

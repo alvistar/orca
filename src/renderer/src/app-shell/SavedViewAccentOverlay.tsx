@@ -1,19 +1,19 @@
 import type React from 'react'
 import { useState } from 'react'
-import { useAppStore } from '@/store'
+import { useActiveSidebarView } from '../components/sidebar/SidebarSavedViewChip'
 import { cn } from '@/lib/utils'
 
 /** 2px window frame in the active saved view's color; decorative, never takes input or layout. */
 export function SavedViewAccentOverlay(): React.JSX.Element | null {
-  const color = useAppStore(
-    (s) => s.sidebarSavedViews.find((view) => view.id === s.activeSidebarViewId)?.color ?? null
-  )
-  // Why: keep the last color so a clear fades the frame out instead of cutting it.
+  const activeView = useActiveSidebarView()
+  const color = activeView?.color ?? null
+  // Why: keep the last color so a clear fades the frame out; a switch to an uncolored view cuts it.
   const [lastColor, setLastColor] = useState(color)
-  if (color && color !== lastColor) {
-    setLastColor(color)
+  const nextLastColor = activeView ? color : lastColor
+  if (nextLastColor !== lastColor) {
+    setLastColor(nextLastColor)
   }
-  const frameColor = color ?? lastColor
+  const frameColor = color ?? nextLastColor
   if (!frameColor) {
     return null
   }

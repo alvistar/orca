@@ -1,10 +1,9 @@
 import {
-  findSidebarViewNameConflict,
-  normalizeSidebarViewName,
-  type SidebarSavedView
+  validateSidebarViewName,
+  type SidebarSavedView,
+  type SidebarViewNameError
 } from '../../../../shared/sidebar-saved-views'
 import { translate } from '@/i18n/i18n'
-import type { SidebarViewNameError } from '@/store/slices/ui/ui-slice-contract-saved-views'
 
 export function savedViewNameErrorMessage(error: SidebarViewNameError): string {
   switch (error.kind) {
@@ -25,10 +24,6 @@ export function validateSavedViewName(
   rawName: string,
   ignoreId?: string
 ): SidebarViewNameError | null {
-  const name = normalizeSidebarViewName(rawName)
-  if (!name) {
-    return { kind: 'empty' }
-  }
-  const conflict = findSidebarViewNameConflict(views, name, ignoreId)
-  return conflict ? { kind: 'duplicate', existingName: conflict.name } : null
+  const result = validateSidebarViewName(views, rawName, ignoreId)
+  return result.ok ? null : result.error
 }

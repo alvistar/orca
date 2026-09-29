@@ -11,6 +11,7 @@ import {
 } from './persisted-ui-write-baseline'
 import { SAVED_VIEW_DEACTIVATING_SETTERS } from './ui/ui-slice-saved-view-actions'
 import { createUIStore, makePersistedUI } from './ui-slice-test-harness'
+import { revealRepoInProjectFilter } from '@/components/sidebar/project-filter-reveal'
 
 const setUI = vi.fn(() => Promise.resolve())
 
@@ -409,6 +410,17 @@ describe('saved sidebar views: deactivation', () => {
     )
 
     expect(store.getState().activeSidebarViewId).toBe(id)
+  })
+
+  it('deactivates when opening a workspace reveals its project in the filter', () => {
+    const store = seededStore()
+    store.getState().setFilterRepoIds(['repo-a'])
+    saveOrThrow(store, 'Only A')
+
+    revealRepoInProjectFilter(store.getState(), 'repo-b')
+
+    expect(store.getState().filterRepoIds).toEqual(['repo-a', 'repo-b'])
+    expect(store.getState().activeSidebarViewId).toBeNull()
   })
 
   it('does not touch non-captured settings or their persistence', () => {

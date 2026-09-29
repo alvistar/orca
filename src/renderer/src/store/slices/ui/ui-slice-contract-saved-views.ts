@@ -1,9 +1,9 @@
-import type { SidebarSavedView } from '../../../../../shared/sidebar-saved-views'
+import type {
+  SidebarSavedView,
+  SidebarViewNameError
+} from '../../../../../shared/sidebar-saved-views'
 
-export type SidebarViewNameError =
-  | { kind: 'empty' }
-  | { kind: 'duplicate'; existingName: string }
-  | { kind: 'limit' }
+export type { SidebarViewNameError }
 
 export type SidebarViewNameResult =
   | { ok: true; id: string }

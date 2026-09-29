@@ -1,5 +1,6 @@
 import type React from 'react'
 import { useAppStore } from '@/store'
+import type { SavedViewDialogKind } from '@/store/slices/ui/ui-slice-contract-saved-views'
 import {
   DropdownMenuCheckboxItem,
   DropdownMenuItem,
@@ -15,6 +16,7 @@ import { SavedViewColorDot } from './SavedViewColorControls'
 import { findMenuRootTrigger } from './saved-view-focus-return'
 import { savedViewShortcutLabel } from './saved-view-shortcut-labels'
 import { getShortcutPlatform } from '@/hooks/useShortcutLabel'
+import { useActiveSidebarView } from './SidebarSavedViewChip'
 
 /** The switcher list plus Save / Manage; rendered inside any menu content (options submenu, header chip). */
 export function SidebarSavedViewsMenuItems(): React.JSX.Element {
@@ -25,7 +27,7 @@ export function SidebarSavedViewsMenuItems(): React.JSX.Element {
   const keybindings = useAppStore((s) => s.keybindings)
   const platform = getShortcutPlatform()
 
-  const openDialog = (kind: 'save' | 'manage') => (event: Event) => {
+  const openDialog = (kind: SavedViewDialogKind) => (event: Event) => {
     // Why: the item unmounts with the menu; focus goes back to the menu's own trigger.
     openSavedViewDialog(
       kind,
@@ -85,9 +87,7 @@ export function SidebarSavedViewsMenuRow({
 }: {
   preserveWorkspaceBoardOpen?: boolean
 }): React.JSX.Element {
-  const activeName = useAppStore(
-    (s) => s.sidebarSavedViews.find((view) => view.id === s.activeSidebarViewId)?.name
-  )
+  const activeName = useActiveSidebarView()?.name
 
   return (
     <DropdownMenuSub>

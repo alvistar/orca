@@ -1,14 +1,13 @@
 import type { UISlice, UISliceGet, UISliceSet } from './ui-slice-contract'
-import type { SidebarViewNameResult } from './ui-slice-contract-saved-views'
 import type { AppState } from '../../types'
 import { createBrowserUuid } from '@/lib/browser-uuid'
 import { normalizeRepoBadgeColor } from '../../../../../shared/repo-badge-color'
 import {
   MAX_SIDEBAR_SAVED_VIEWS,
   findSidebarViewNameConflict,
-  normalizeSidebarViewName,
   resolveSidebarViewSettings,
   snapshotSidebarViewSettings,
+  validateSidebarViewName,
   type SidebarSavedView,
   type SidebarViewCapturedField
 } from '../../../../../shared/sidebar-saved-views'
@@ -34,22 +33,6 @@ type DeactivatingSetter = keyof typeof SAVED_VIEW_DEACTIVATING_SETTERS
 
 function liveSettingsKey(state: AppState): string {
   return JSON.stringify(snapshotSidebarViewSettings(state))
-}
-
-function nameError(
-  views: readonly SidebarSavedView[],
-  rawName: string,
-  ignoreId?: string
-): SidebarViewNameResult | string {
-  const name = normalizeSidebarViewName(rawName)
-  if (!name) {
-    return { ok: false, error: { kind: 'empty' } }
-  }
-  const conflict = findSidebarViewNameConflict(views, name, ignoreId)
-  if (conflict) {
-    return { ok: false, error: { kind: 'duplicate', existingName: conflict.name } }
-  }
-  return name
 }
 
 function withColor(view: SidebarSavedView, color: string | null | undefined): SidebarSavedView {
@@ -97,10 +80,11 @@ export function createUiSavedViewActions(set: UISliceSet, get: UISliceGet): Part
       if (s.sidebarSavedViews.length >= MAX_SIDEBAR_SAVED_VIEWS) {
         return { ok: false, error: { kind: 'limit' } }
       }
-      const name = nameError(s.sidebarSavedViews, rawName)
-      if (typeof name !== 'string') {
-        return name
+      const validated = validateSidebarViewName(s.sidebarSavedViews, rawName)
+      if (!validated.ok) {
+        return validated
       }
+      const { name } = validated
       const view = withColor(
         { id: createBrowserUuid(), name, settings: snapshotSidebarViewSettings(s) },
         color
@@ -143,10 +127,11 @@ export function createUiSavedViewActions(set: UISliceSet, get: UISliceGet): Part
 
     renameSidebarView: (id, rawName) => {
       const s = get()
-      const name = nameError(s.sidebarSavedViews, rawName, id)
-      if (typeof name !== 'string') {
-        return name
+      const validated = validateSidebarViewName(s.sidebarSavedViews, rawName, id)
+      if (!validated.ok) {
+        return validated
       }
+      const { name } = validated
       const sidebarSavedViews = s.sidebarSavedViews.map((view) =>
         view.id === id ? { ...view, name } : view
       )

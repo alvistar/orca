@@ -9,6 +9,7 @@ import {
   resolveSidebarViewSettings,
   snapshotSidebarViewSettings,
   type SidebarSavedView,
+  validateSidebarViewName,
   type SidebarViewLiveSettings
 } from './sidebar-saved-views'
 
@@ -218,6 +219,20 @@ describe('normalizeActiveSidebarViewId', () => {
     expect(normalizeActiveSidebarViewId('gone', views)).toBeNull()
     expect(normalizeActiveSidebarViewId(42, views)).toBeNull()
     expect(normalizeActiveSidebarViewId(undefined, views)).toBeNull()
+  })
+})
+
+describe('validateSidebarViewName', () => {
+  it('returns the trimmed name or the reason it cannot be used', () => {
+    const views = [view({ id: 'v1', name: 'Homelab' })]
+
+    expect(validateSidebarViewName(views, '  Work ')).toEqual({ ok: true, name: 'Work' })
+    expect(validateSidebarViewName(views, ' ')).toEqual({ ok: false, error: { kind: 'empty' } })
+    expect(validateSidebarViewName(views, 'HOMELAB')).toEqual({
+      ok: false,
+      error: { kind: 'duplicate', existingName: 'Homelab' }
+    })
+    expect(validateSidebarViewName(views, 'homelab', 'v1')).toEqual({ ok: true, name: 'homelab' })
   })
 })
 

@@ -161,6 +161,30 @@ export function normalizeSidebarViewName(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null
 }
 
+export type SidebarViewNameError =
+  | { kind: 'empty' }
+  | { kind: 'duplicate'; existingName: string }
+  | { kind: 'limit' }
+
+/** Only views 1-9 answer to the digit shortcut. */
+export const SIDEBAR_VIEW_SHORTCUT_COUNT = 9
+
+/** Trimmed name, or why it can't be used; `ignoreId` lets a view keep its own name on rename. */
+export function validateSidebarViewName(
+  views: readonly SidebarSavedView[],
+  rawName: string,
+  ignoreId?: string
+): { ok: true; name: string } | { ok: false; error: SidebarViewNameError } {
+  const name = normalizeSidebarViewName(rawName)
+  if (!name) {
+    return { ok: false, error: { kind: 'empty' } }
+  }
+  const conflict = findSidebarViewNameConflict(views, name, ignoreId)
+  return conflict
+    ? { ok: false, error: { kind: 'duplicate', existingName: conflict.name } }
+    : { ok: true, name }
+}
+
 export function findSidebarViewNameConflict(
   views: readonly SidebarSavedView[],
   name: string,

@@ -6,6 +6,7 @@ import {
   parseKeybinding,
   type KeybindingOverrides
 } from '../../../../shared/keybindings'
+import { SIDEBAR_VIEW_SHORTCUT_COUNT } from '../../../../shared/sidebar-saved-views'
 
 /** The chord that selects the view at `index`, or null when unbound or past 9. */
 export function savedViewShortcutLabel(
@@ -13,7 +14,7 @@ export function savedViewShortcutLabel(
   overrides: KeybindingOverrides | undefined,
   platform: NodeJS.Platform
 ): string | null {
-  if (index > 8) {
+  if (index >= SIDEBAR_VIEW_SHORTCUT_COUNT) {
     return null
   }
   const [binding] = getEffectiveKeybindingsForAction(
