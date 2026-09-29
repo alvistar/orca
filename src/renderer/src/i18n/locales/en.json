@@ -39,7 +39,15 @@
       "allProjects": "All projects",
       "summaryProjects": "Projects",
       "summaryHidden": "Hidden",
-      "summaryHosts": "Hosts"
+      "summaryHosts": "Hosts",
+      "paletteKeyword": "view",
+      "paletteCurrent": "Current",
+      "paletteDescription": "Saved sidebar view",
+      "paletteTitle": "View: {{name}}",
+      "paletteSaveKeyword": "save",
+      "paletteManage": "Manage saved views…",
+      "paletteManageDescription": "Rename, recolor or delete saved views",
+      "paletteManageKeyword": "manage"
     }
   },
   "app": {

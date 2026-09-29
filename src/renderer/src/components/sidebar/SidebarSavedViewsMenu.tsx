@@ -4,6 +4,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger
@@ -12,6 +13,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { translate } from '@/i18n/i18n'
 import { SavedViewColorDot } from './SavedViewColorControls'
 import { findMenuRootTrigger } from './saved-view-focus-return'
+import { savedViewShortcutLabel } from './saved-view-shortcut-labels'
+import { getShortcutPlatform } from '@/hooks/useShortcutLabel'
 
 /** The switcher list plus Save / Manage; rendered inside any menu content (options submenu, header chip). */
 export function SidebarSavedViewsMenuItems(): React.JSX.Element {
@@ -19,6 +22,8 @@ export function SidebarSavedViewsMenuItems(): React.JSX.Element {
   const activeId = useAppStore((s) => s.activeSidebarViewId)
   const applySidebarView = useAppStore((s) => s.applySidebarView)
   const openSavedViewDialog = useAppStore((s) => s.openSavedViewDialog)
+  const keybindings = useAppStore((s) => s.keybindings)
+  const platform = getShortcutPlatform()
 
   const openDialog = (kind: 'save' | 'manage') => (event: Event) => {
     // Why: the item unmounts with the menu; focus goes back to the menu's own trigger.
@@ -39,22 +44,26 @@ export function SidebarSavedViewsMenuItems(): React.JSX.Element {
         </p>
       ) : (
         <div className="scrollbar-sleek max-h-72 overflow-y-auto">
-          {views.map((view) => (
-            <Tooltip key={view.id}>
-              <TooltipTrigger asChild>
-                <DropdownMenuCheckboxItem
-                  checked={view.id === activeId}
-                  onSelect={() => applySidebarView(view.id)}
-                >
-                  <SavedViewColorDot color={view.color} />
-                  <span className="min-w-0 flex-1 truncate">{view.name}</span>
-                </DropdownMenuCheckboxItem>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={6}>
-                {view.name}
-              </TooltipContent>
-            </Tooltip>
-          ))}
+          {views.map((view, index) => {
+            const shortcut = savedViewShortcutLabel(index, keybindings, platform)
+            return (
+              <Tooltip key={view.id}>
+                <TooltipTrigger asChild>
+                  <DropdownMenuCheckboxItem
+                    checked={view.id === activeId}
+                    onSelect={() => applySidebarView(view.id)}
+                  >
+                    <SavedViewColorDot color={view.color} />
+                    <span className="min-w-0 flex-1 truncate">{view.name}</span>
+                    {shortcut ? <DropdownMenuShortcut>{shortcut}</DropdownMenuShortcut> : null}
+                  </DropdownMenuCheckboxItem>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={6}>
+                  {view.name}
+                </TooltipContent>
+              </Tooltip>
+            )
+          })}
         </div>
       )}
       <DropdownMenuSeparator />

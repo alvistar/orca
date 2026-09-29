@@ -22,6 +22,7 @@ import { usePluginCommands } from '@/store/plugin-panels'
 import { useAppStore } from '../store'
 import {
   keybindingMatchesAction,
+  matchKeybindingDigitIndex,
   type KeybindingActionId,
   type KeybindingMatchOptions
 } from '../../../shared/keybindings'
@@ -243,6 +244,21 @@ export function useGlobalKeybindings(args: {
         if (matchShortcut(actionId) && handlers.get(actionId)?.()) {
           return
         }
+      }
+
+      // Unbound by default; a position past the last saved view is a no-op.
+      const savedViewIndex = matchKeybindingDigitIndex(
+        'sidebar.view.selectByIndex',
+        input,
+        shortcutPlatform,
+        keybindings,
+        { context, terminalShortcutPolicy }
+      )
+      if (savedViewIndex !== null) {
+        input.preventDefault()
+        notifyTerminalCapture('sidebar.view.selectByIndex')
+        useAppStore.getState().applySidebarViewAtIndex(savedViewIndex)
+        return
       }
 
       // Unbound by default, so it runs after the built-in alias handlers above; only consumes the chord when the active worktree has unsent notes.
