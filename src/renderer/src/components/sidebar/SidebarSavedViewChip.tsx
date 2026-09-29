@@ -80,10 +80,6 @@ function SavedViewChip({
   )
 }
 
-/**
- * The sidebar header title slot: while a saved view is active its chip replaces the title.
- * Hidden in the Activity body, which the chip does not describe.
- */
 /** With views saved and none active, the title opens the switcher from the pill's slot. */
 function SavedViewTitleTrigger({
   title,
@@ -131,6 +127,10 @@ function SavedViewTitleTrigger({
   )
 }
 
+/**
+ * The sidebar header title slot: while a saved view is active its chip replaces the title.
+ * Hidden in the Activity body, which the chip does not describe.
+ */
 export function SidebarSavedViewTitleSlot({
   agentsViewActive,
   title,
