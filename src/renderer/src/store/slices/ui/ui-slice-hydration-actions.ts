@@ -63,6 +63,8 @@ import {
 } from './ui-slice-hydration-sanitizers'
 import { hydrateAgentReadState, sanitizeTaskResumeState } from './ui-slice-hydration-values'
 import { hydrateStatusBarItems } from './ui-slice-hydration-status-bar-items'
+import { hydrateSidebarSavedViews } from '../../../../../shared/sidebar-saved-views'
+import { reconcileSyncedSidebarView } from '../../../../../shared/sidebar-saved-views-host-sync'
 
 const MAX_LEFT_SIDEBAR_WIDTH = 500
 const MAX_RIGHT_SIDEBAR_WIDTH = 4000
@@ -160,6 +162,7 @@ export function createUiHydrationActions(set: UISliceSet, _get: UISliceGet): Par
           agentsShowSearch: ui.agentsShowSearch !== false,
           agentsReadFilter: normalizeThreadReadFilter(ui.agentsReadFilter),
           agentsGroupBy: normalizeActivityGroupBy(ui.agentsGroupBy),
+          ...hydrateSidebarSavedViews(ui),
           collapsedGroups: new Set(ui.collapsedGroups ?? []),
           uiZoomLevel: ui.uiZoomLevel ?? 0,
           editorFontZoomLevel: ui.editorFontZoomLevel ?? 0,
@@ -282,6 +285,9 @@ export function createUiHydrationActions(set: UISliceSet, _get: UISliceGet): Par
           ) as (keyof PersistedUIWriteBaseline)[]) {
             ;(hydrated as Record<string, unknown>)[field] = s[field]
           }
+        }
+        if (source === 'sync') {
+          Object.assign(hydrated, reconcileSyncedSidebarView(hydrated, validRepoIds))
         }
         // Why: return the same ref on identical hydration so App's debounced writer doesn't echo it back to main.
         // The baseline must still advance when it moved (a remote same-field write during an in-flight

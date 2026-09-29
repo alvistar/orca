@@ -163,6 +163,9 @@ export function usePersistedUIWriter(): void {
       alwaysShowDefaultBranchWorkspace: s.alwaysShowDefaultBranchWorkspace,
       showDotfilesByWorktree: s.showDotfilesByWorktree,
       filterRepoIds: s.filterRepoIds,
+      sidebarSavedViews: s.sidebarSavedViews,
+      activeSidebarViewId: s.activeSidebarViewId,
+      sidebarSettingsBeforeView: s.sidebarSettingsBeforeView,
       // Why: dashboard auto-acks (fire on focus/visibility) and the in-memory ack cleanup
       // paths in agent-status.ts (close/dismiss) flow to disk through map identity changes.
       // Without persisting, agent rows that survive restart come back bold even when the

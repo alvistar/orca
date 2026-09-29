@@ -45,6 +45,27 @@ describe('client UI RPC pairing-local field seams', () => {
       { hostId: 'runtime:web-11111111-2222-3333-4444-555555555555', repoId: 'repo-a' }
     ],
     workspaceHostOrder: ['runtime:web-11111111-2222-3333-4444-555555555555', 'local'],
+    sidebarSavedViews: [
+      {
+        id: 'view-1',
+        name: 'Homelab',
+        settings: {
+          filterRepoIds: ['repo-a'],
+          groupBy: 'repo',
+          sortBy: 'recent',
+          projectOrderBy: 'manual',
+          hideDefaultBranchWorkspace: false
+        }
+      }
+    ],
+    activeSidebarViewId: 'view-1',
+    sidebarSettingsBeforeView: {
+      filterRepoIds: [],
+      groupBy: 'workspace-status',
+      sortBy: 'name',
+      projectOrderBy: 'manual',
+      hideDefaultBranchWorkspace: false
+    },
     agentsVisibleHostIds: ['runtime:web-11111111-2222-3333-4444-555555555555'],
     agentsFilterRepoIds: ['repo-a'],
     agentsShowChildAgents: true,

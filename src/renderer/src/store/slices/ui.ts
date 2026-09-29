@@ -14,6 +14,10 @@ import { createUiSurfaceActions } from './ui/ui-slice-surface-actions'
 import { createUiPersistenceActions } from './ui/ui-slice-persistence-actions'
 import { createUiHydrationActions } from './ui/ui-slice-hydration-actions'
 import { createUiUpdateActions } from './ui/ui-slice-update-actions'
+import {
+  createUiSavedViewActions,
+  withSavedViewDeactivation
+} from './ui/ui-slice-saved-view-actions'
 
 export type {
   AgentSendPopoverTargetMode,
@@ -26,6 +30,7 @@ export type {
 } from './ui/ui-slice-contract'
 
 export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get) =>
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: each factory returns Partial<UISlice>; together they define every member.
   ({
     ...createUiAgentActions(set, get),
     ...createUiTaskActions(set, get),
@@ -35,9 +40,10 @@ export const createUISlice: StateCreator<AppState, [], [], UISlice> = (set, get)
     ...createUiFeatureActions(set, get),
     ...createUiTourActions(set, get),
     ...createUiTrustActions(set, get),
-    ...createUiPreferenceActions(set, get),
+    ...withSavedViewDeactivation(createUiPreferenceActions(set, get), set, get),
     ...createUiSurfaceActions(set, get),
     ...createUiPersistenceActions(set, get),
     ...createUiHydrationActions(set, get),
-    ...createUiUpdateActions(set, get)
+    ...createUiUpdateActions(set, get),
+    ...createUiSavedViewActions(set, get)
   }) as UISlice

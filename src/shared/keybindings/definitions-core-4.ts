@@ -3,6 +3,16 @@ import { platformBindings } from './definitions-support'
 
 export const KEYBINDING_DEFINITION_CORE_4: readonly KeybindingDefinition[] = [
   {
+    id: 'sidebar.view.selectByIndex',
+    title: 'Select Saved View 1–9',
+    group: 'Global',
+    scope: 'global',
+    searchKeywords: ['shortcut', 'sidebar', 'saved', 'view', 'filter', 'switch', '1-9', 'index'],
+    // Why unbound: Mod+Alt/Ctrl+digit chords collide with Linux desktop workspace switching.
+    defaultBindings: platformBindings([]),
+    allowInTerminal: true
+  },
+  {
     id: 'terminal.clearPaneTitle',
     title: 'Clear Pane Title',
     group: 'Terminal Panes',

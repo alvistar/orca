@@ -10,6 +10,7 @@ import {
 } from '@/components/cmd-j/palette-results'
 import { getCmdJQuickActions } from '@/components/cmd-j/quick-actions'
 import { buildPluginQuickActions } from '@/components/cmd-j/plugin-quick-actions'
+import { useSavedViewQuickActions } from '@/components/cmd-j/use-saved-view-quick-actions'
 import type { ProjectTargetPaletteItem } from './worktree-jump-palette-model'
 import type { WorktreeJumpPaletteFilter } from './use-worktree-jump-palette-filter'
 import type { WorktreeJumpPaletteLocalState } from './use-worktree-jump-palette-local-state'
@@ -43,13 +44,15 @@ export function useWorktreeJumpPaletteProjectTargets({
     () => buildCmdJSettingsResults(settingsSections),
     [settingsSections]
   )
+  const savedViewQuickActions = useSavedViewQuickActions()
   const actionResults = useMemo(
     () =>
       buildCmdJActionResults([
         ...getCmdJQuickActions(),
-        ...buildPluginQuickActions(pluginCommands)
+        ...buildPluginQuickActions(pluginCommands),
+        ...savedViewQuickActions
       ]),
-    [pluginCommands]
+    [pluginCommands, savedViewQuickActions]
   )
   const renderableProjectRepoIds = useMemo(() => {
     const ids = new Set<string>()

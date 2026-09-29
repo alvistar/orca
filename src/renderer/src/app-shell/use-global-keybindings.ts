@@ -22,6 +22,7 @@ import { usePluginCommands } from '@/store/plugin-panels'
 import { useAppStore } from '../store'
 import {
   keybindingMatchesAction,
+  matchKeybindingDigitIndex,
   type KeybindingActionId,
   type KeybindingMatchOptions
 } from '../../../shared/keybindings'
@@ -184,6 +185,22 @@ export function useGlobalKeybindings(args: {
       ) {
         input.preventDefault()
         openFloatingWorkspaceMaximized()
+        return
+      }
+
+      // Before the editable-surface bail so the chord also works in the editor; unbound by default,
+      // and a position past the last saved view falls through untouched.
+      const savedViewIndex = matchKeybindingDigitIndex(
+        'sidebar.view.selectByIndex',
+        input,
+        shortcutPlatform,
+        keybindings,
+        { context, terminalShortcutPolicy }
+      )
+      if (savedViewIndex !== null && useAppStore.getState().sidebarSavedViews[savedViewIndex]) {
+        input.preventDefault()
+        notifyTerminalCapture('sidebar.view.selectByIndex')
+        useAppStore.getState().applySidebarViewAtIndex(savedViewIndex)
         return
       }
 

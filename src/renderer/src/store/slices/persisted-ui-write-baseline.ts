@@ -28,6 +28,9 @@ export type PersistedUIWriteBaseline = {
   alwaysShowDefaultBranchWorkspace: boolean
   showDotfilesByWorktree: Record<string, boolean>
   filterRepoIds: readonly string[]
+  sidebarSavedViews: NonNullable<PersistedUIState['sidebarSavedViews']>
+  activeSidebarViewId: string | null
+  sidebarSettingsBeforeView: PersistedUIState['sidebarSettingsBeforeView'] | null
   acknowledgedAgentsByPaneKey: Record<string, number>
   activityClearedAtByPaneKey: Record<string, number>
   manuallyUnreadTurnsByPaneKey: Record<string, number>
@@ -57,6 +60,9 @@ const PERSISTED_UI_WRITE_BASELINE_FIELD_SET = {
   alwaysShowDefaultBranchWorkspace: true,
   showDotfilesByWorktree: true,
   filterRepoIds: true,
+  sidebarSavedViews: true,
+  activeSidebarViewId: true,
+  sidebarSettingsBeforeView: true,
   acknowledgedAgentsByPaneKey: true,
   activityClearedAtByPaneKey: true,
   manuallyUnreadTurnsByPaneKey: true
@@ -98,6 +104,9 @@ function stringArrayEqual(a: readonly string[], b: readonly string[]): boolean {
 function writeFieldEqual(field: keyof PersistedUIWriteBaseline, a: unknown, b: unknown): boolean {
   if (field === 'filterRepoIds') {
     return stringArrayEqual(a as readonly string[], b as readonly string[])
+  }
+  if (field === 'sidebarSavedViews' || field === 'sidebarSettingsBeforeView') {
+    return JSON.stringify(a) === JSON.stringify(b)
   }
   if (
     field === 'showDotfilesByWorktree' ||

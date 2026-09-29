@@ -51,6 +51,10 @@ vi.mock('./SidebarWorkspaceOptionsMenu', () => ({
   default: () => <button aria-label="Workspace options" type="button" />
 }))
 
+vi.mock('./SidebarSavedViewChip', () => ({
+  SidebarSavedViewTitleSlot: ({ children }: { children: React.ReactNode }) => <>{children}</>
+}))
+
 vi.mock('./workspace-options-menu-items', () => ({
   useWorkspaceOptionsFilterBadge: () => ({
     hasAnyFilter: false,

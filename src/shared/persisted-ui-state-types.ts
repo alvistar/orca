@@ -25,6 +25,7 @@ import type {
 } from './ui-chrome-types'
 import type { WorkspaceStatusDefinition } from './worktree/types'
 import type { PersistedAutomationHostFilter } from './automation-host-filter'
+import type { SidebarSavedView, SidebarViewSettings } from './sidebar-saved-views'
 
 export type PersistedUIState = {
   lastActiveRepoId: string | null
@@ -75,6 +76,12 @@ export type PersistedUIState = {
   /** Per-worktree Explorer dotfile visibility. Missing entries inherit the default: show. */
   showDotfilesByWorktree?: Record<string, boolean>
   filterRepoIds: string[]
+  /** Named snapshots of the workspace sidebar settings, in creation order; pairing-local. */
+  sidebarSavedViews?: SidebarSavedView[]
+  /** Saved view the sidebar currently matches; cleared by any manual change to a captured setting. */
+  activeSidebarViewId?: string | null
+  /** Sidebar settings from before the first view was applied; clearing the view restores them. */
+  sidebarSettingsBeforeView?: SidebarViewSettings | null
   /** Agents-view host scope; deliberately separate from visibleWorkspaceHostIds so a monitoring surface never inherits nav filters silently. `null` = all hosts. */
   agentsVisibleHostIds?: VisibleWorkspaceHostIds
   /** Agents-view project filter; empty = all projects. Separate from filterRepoIds (workspace nav). */

@@ -160,6 +160,10 @@ export const UiUpdateFields = z
     manualRepoOrder: z
       .array(z.object({ hostId: z.string(), repoId: z.string() }).strict())
       .optional(),
+    // Why lenient: renderer hydration validates saved views entry by entry.
+    sidebarSavedViews: UnknownRecordArray.optional(),
+    activeSidebarViewId: NullableString.optional(),
+    sidebarSettingsBeforeView: UnknownRecord.nullable().optional(),
     ...ClientUiWorkspaceFilterFields,
     // Why: rides App.tsx's debounced writer, so omitting it rejected that entire
     // payload (sidebar widths, filters, agent acks) for every paired client.
