@@ -49,6 +49,7 @@
       "paletteManageDescription": "Rename, recolor or delete saved views",
       "paletteManageKeyword": "manage",
       "chipLabel": "Saved view: {{name}}. Switch view",
+      "titleTriggerLabel": "{{title}}, switch saved view",
       "clear": "Clear saved view",
       "appliedAnnouncement": "Saved view {{name}} applied",
       "clearedAnnouncement": "Saved view cleared",
